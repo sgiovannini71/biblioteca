@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Biblioteca di casa</title>
+
+  <style>
+    :root {
+      --bg: #f5f5f2;
+      --card: #ffffff;
+      --text: #222;
+      --muted: #666;
+      --border: #ddd;
+      --accent: #5b4636;
+      --accent-light: #efe8df;
+      --danger: #b94a48;
+      --success: #3d7a4f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: var(--accent);
+      color: white;
+      padding: 24px 32px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 30px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      opacity: 0.9;
+    }
+
+    main {
+      padding: 24px 32px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    input,
+    select,
+    button {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+    }
+
+    button {
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      border: none;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      color: var(--accent);
+    }
+
+    .stat span {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 18px;
+    }
+
+    .book-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .book-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+
+    .cover-wrap {
+      height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #eee;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .cover-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .no-cover {
+      color: #888;
+      font-size: 13px;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .book-title {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .book-author {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .book-meta {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: auto;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 7px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    .badge.read {
+      background: #e2f1e6;
+      color: var(--success);
+    }
+
+    .badge.unread {
+      background: #f6e2e0;
+      color: var(--danger);
+    }
+
+    .badge.favorite {
+      background: #fff0c2;
+      color: #876000;
+    }
+
+    .empty {
+      padding: 32px;
+      background: white;
+      border-radius: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: auto;
+      padding: 24px;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #333;
+      color: white;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .detail {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 24px;
+    }
+
+    .detail img {
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      background: #eee;
+      border-radius: 12px;
+    }
+
+    .detail h2 {
+      margin-top: 0;
+      margin-right: 36px;
+    }
+
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+
+    .detail-table td {
+      border-bottom: 1px solid #eee;
+      padding: 7px 4px;
+      vertical-align: top;
+    }
+
+    .detail-table td:first-child {
+      color: var(--muted);
+      width: 150px;
+    }
+
+    .summary {
+      line-height: 1.5;
+      margin-top: 14px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    @media (max-width: 900px) {
+      .toolbar {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 650px) {
+      header,
+      main {
+        padding: 18px;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .detail {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Biblioteca di casa</h1>
+    <p>Catalogo personale caricato da file CSV</p>
+  </header>
+
+  <main>
+    <section class="toolbar">
+      <input id="search" type="text" placeholder="Cerca titolo, autore, editore, genere, tag..." />
+
+      <select id="filterRead">
+        <option value="">Tutti</option>
+        <option value="read">Letti</option>
+        <option value="unread">Non letti</option>
+      </select>
+
+      <select id="filterFavorite">
+        <option value="">Tutti</option>
+        <option value="favorite">Preferiti</option>
+      </select>
+
+      <select id="sortBy">
+        <option value="title">Ordina per titolo</option>
+        <option value="author">Ordina per autore</option>
+        <option value="date_desc">Più recenti</option>
+        <option value="date_asc">Meno recenti</option>
+        <option value="rating_desc">Rating alto</option>
+        <option value="pages_desc">Più pagine</option>
+      </select>
+
+      <button id="resetBtn">Azzera filtri</button>
+    </section>
+
+    <section class="stats" id="stats"></section>
+
+    <section id="books" class="grid"></section>
+  </main>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <button class="modal-close" id="modalClose">×</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const CSV_FILE = "libri.csv";
+
+    let allBooks = [];
+    let visibleBooks = [];
+
+    const $ = id => document.getElementById(id);
+
+    fetch(CSV_FILE)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("File CSV non trovato: " + CSV_FILE);
+        }
+        return response.text();
+      })
+      .then(text => {
+        allBooks = parseCSV(text);
+        applyFilters();
+      })
+      .catch(error => {
+        $("books").innerHTML = `<div class="empty">Errore: ${escapeHTML(error.message)}</div>`;
+      });
+
+    ["search", "filterRead", "filterFavorite", "sortBy"].forEach(id => {
+      $(id).addEventListener("input", applyFilters);
+      $(id).addEventListener("change", applyFilters);
+    });
+
+    $("resetBtn").addEventListener("click", () => {
+      $("search").value = "";
+      $("filterRead").value = "";
+      $("filterFavorite").value = "";
+      $("sortBy").value = "title";
+      applyFilters();
+    });
+
+    $("modalClose").addEventListener("click", closeModal);
+    $("modalBackdrop").addEventListener("click", event => {
+      if (event.target === $("modalBackdrop")) closeModal();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeModal();
+    });
+
+    function applyFilters() {
+      const q = $("search").value.trim().toLowerCase();
+      const filterRead = $("filterRead").value;
+      const filterFavorite = $("filterFavorite").value;
+      const sortBy = $("sortBy").value;
+
+      visibleBooks = allBooks.filter(book => {
+        const searchable = [
+          book.Title,
+          book.Author,
+          book.Publisher,
+          book.Genres,
+          book.Tags,
+          book.BookShelf,
+          book.Location,
+          book.ISBN,
+          book.Summary
+        ].join(" ").toLowerCase();
+
+        if (q && !searchable.includes(q)) return false;
+
+        if (filterRead === "read" && !isYes(book.Read)) return false;
+        if (filterRead === "unread" && isYes(book.Read)) return false;
+
+        if (filterFavorite === "favorite" && !isYes(book.Favorite)) return false;
+
+        return true;
+      });
+
+      sortBooks(visibleBooks, sortBy);
+      renderStats();
+      renderBooks(visibleBooks);
+    }
+
+    function sortBooks(books, sortBy) {
+      books.sort((a, b) => {
+        switch (sortBy) {
+          case "author":
+            return compareText(a.Author, b.Author) || compareText(a.Title, b.Title);
+          case "date_desc":
+            return getYear(b["Published Date"]) - getYear(a["Published Date"]);
+          case "date_asc":
+            return getYear(a["Published Date"]) - getYear(b["Published Date"]);
+          case "rating_desc":
+            return toNumber(b.Rating) - toNumber(a.Rating);
+          case "pages_desc":
+            return toNumber(b.Pages) - toNumber(a.Pages);
+          case "title":
+          default:
+            return compareText(a.Title, b.Title);
+        }
+      });
+    }
+
+    function renderStats() {
+      const total = allBooks.length;
+      const shown = visibleBooks.length;
+      const read = allBooks.filter(b => isYes(b.Read)).length;
+      const favorites = allBooks.filter(b => isYes(b.Favorite)).length;
+      const pages = allBooks.reduce((sum, b) => sum + toNumber(b.Pages), 0);
+
+      $("stats").innerHTML = `
+        <div class="stat"><strong>${total}</strong><span>Libri totali</span></div>
+        <div class="stat"><strong>${shown}</strong><span>Libri visualizzati</span></div>
+        <div class="stat"><strong>${read}</strong><span>Libri letti</span></div>
+        <div class="stat"><strong>${favorites}</strong><span>Preferiti</span></div>
+        <div class="stat"><strong>${pages}</strong><span>Pagine complessive</span></div>
+      `;
+    }
+
+    function renderBooks(books) {
+      const container = $("books");
+      container.innerHTML = "";
+
+      if (!books.length) {
+        container.innerHTML = `<div class="empty">Nessun libro trovato.</div>`;
+        return;
+      }
+
+      books.forEach(book => {
+        const card = document.createElement("article");
+        card.className = "book-card";
+
+        const cover = getCoverUrl(book, "M");
+        const year = getYear(book["Published Date"]);
+        const genre = firstValue(book.Genres);
+        const shelf = book.BookShelf || book.Location || "";
+
+        card.innerHTML = `
+          <div class="cover-wrap">
+            ${cover
+              ? `<img src="${escapeAttr(cover)}" alt="Copertina di ${escapeAttr(book.Title || "libro")}" onerror="this.parentElement.innerHTML='<div class=&quot;no-cover&quot;>Copertina non disponibile</div>'">`
+              : `<div class="no-cover">Copertina non disponibile</div>`
+            }
+          </div>
+
+          <div class="book-title">${escapeHTML(book.Title || "Senza titolo")}</div>
+          <div class="book-author">${escapeHTML(book.Author || "Autore non indicato")}</div>
+          <div class="book-meta">
+            ${escapeHTML(book.Publisher || "")}${year ? " · " + year : ""}<br>
+            ${book.Pages ? escapeHTML(book.Pages) + " pagine" : ""}
+            ${shelf ? " · " + escapeHTML(shelf) : ""}
+          </div>
+
+          <div class="badges">
+            ${genre ? `<span class="badge">${escapeHTML(genre)}</span>` : ""}
+            ${isYes(book.Read) ? `<span class="badge read">Letto</span>` : `<span class="badge unread">Non letto</span>`}
+            ${isYes(book.Favorite) ? `<span class="badge favorite">★ Preferito</span>` : ""}
+            ${book.Rating ? `<span class="badge">Rating ${escapeHTML(book.Rating)}</span>` : ""}
+          </div>
+        `;
+
+        card.addEventListener("click", () => openModal(book));
+        container.appendChild(card);
+      });
+    }
+
+    function openModal(book) {
+      const cover = getCoverUrl(book, "L") || getCoverUrl(book, "M");
+      const itemUrl = book["Item Url"] || "";
+
+      $("modalContent").innerHTML = `
+        <div class="detail">
+          <div>
+            ${cover
+              ? `<img src="${escapeAttr(cover)}" alt="Copertina di ${escapeAttr(book.Title || "libro")}">`
+              : `<div class="cover-wrap"><div class="no-cover">Copertina non disponibile</div></div>`
+            }
+          </div>
+
+          <div>
+            <h2>${escapeHTML(book.Title || "Senza titolo")}</h2>
+            <p><strong>${escapeHTML(book.Author || "Autore non indicato")}</strong></p>
+
+            <div class="badges">
+              ${isYes(book.Read) ? `<span class="badge read">Letto</span>` : `<span class="badge unread">Non letto</span>`}
+              ${isYes(book.Favorite) ? `<span class="badge favorite">★ Preferito</span>` : ""}
+              ${book.Rating ? `<span class="badge">Rating ${escapeHTML(book.Rating)}</span>` : ""}
+            </div>
+
+            <table class="detail-table">
+              ${row("Editore", book.Publisher)}
+              ${row("Data pubblicazione", book["Published Date"])}
+              ${row("Formato", book.Format)}
+              ${row("Pagine", book.Pages)}
+              ${row("Serie", book.Series)}
+              ${row("Volume", book.Volume)}
+              ${row("Lingua", book.Language)}
+              ${row("ISBN", book.ISBN)}
+              ${row("Generi", book.Genres)}
+              ${row("Tag", book.Tags)}
+              ${row("Scaffale", book.BookShelf)}
+              ${row("Posizione", book.Location)}
+              ${row("Data aggiunta", book["Added Date"])}
+              ${row("Inizio lettura", book["Started Reading Date"])}
+              ${row("Fine lettura", book["Finished Reading Date"])}
+              ${row("Commenti", book.Comments)}
+              ${itemUrl ? `<tr><td>Link</td><td><a href="${escapeAttr(itemUrl)}" target="_blank" rel="noopener">Apri scheda esterna</a></td></tr>` : ""}
+            </table>
+
+            ${book.Summary ? `<div class="summary"><strong>Descrizione</strong><br>${escapeHTML(book.Summary)}</div>` : ""}
+          </div>
+        </div>
+      `;
+
+      $("modalBackdrop").style.display = "flex";
+    }
+
+    function closeModal() {
+      $("modalBackdrop").style.display = "none";
+    }
+
+    function row(label, value) {
+      if (!value) return "";
+      return `<tr><td>${escapeHTML(label)}</td><td>${escapeHTML(value)}</td></tr>`;
+    }
+
+    function getCoverUrl(book, size) {
+      if (book["Image Url"]) return book["Image Url"];
+      if (book["Photo Path"]) return book["Photo Path"];
+      if (book["Icon Path"]) return book["Icon Path"];
+
+      const isbn = cleanISBN(book.ISBN);
+      if (!isbn) return "";
+
+      return `https://covers.openlibrary.org/b/isbn/${isbn}-${size}.jpg`;
+    }
+
+    function cleanISBN(isbn) {
+      if (!isbn) return "";
+      return String(isbn).replace(/[^0-9Xx]/g, "");
+    }
+
+    function firstValue(value) {
+      if (!value) return "";
+      return String(value).split(/[;,|]/)[0].trim();
+    }
+
+    function getYear(value) {
+      if (!value) return 0;
+      const match = String(value).match(/\d{4}/);
+      return match ? Number(match[0]) : 0;
+    }
+
+    function toNumber(value) {
+      if (!value) return 0;
+      const n = Number(String(value).replace(",", ".").replace(/[^0-9.]/g, ""));
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function compareText(a, b) {
+      return String(a || "").localeCompare(String(b || ""), "it", { sensitivity: "base" });
+    }
+
+    function isYes(value) {
+      if (value === true) return true;
+      const v = String(value || "").trim().toLowerCase();
+      return ["true", "yes", "y", "si", "sì", "1", "letto", "read"].includes(v);
+    }
+
+    function escapeHTML(str) {
+      return String(str || "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function escapeAttr(str) {
+      return escapeHTML(str).replace(/`/g, "&#096;");
+    }
+
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let value = "";
+      let insideQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === '"' && insideQuotes && next === '"') {
+          value += '"';
+          i++;
+        } else if (char === '"') {
+          insideQuotes = !insideQuotes;
+        } else if (char === ";" && !insideQuotes) {
+          row.push(value);
+          value = "";
+        } else if ((char === "\n" || char === "\r") && !insideQuotes) {
+          if (value !== "" || row.length > 0) {
+            row.push(value);
+            rows.push(row);
+            row = [];
+            value = "";
+          }
+          if (char === "\r" && next === "\n") i++;
+        } else {
+          value += char;
+        }
+      }
+
+      if (value !== "" || row.length > 0) {
+        row.push(value);
+        rows.push(row);
+      }
+
+      if (!rows.length) return [];
+
+      const headers = rows.shift().map(h => h.trim());
+
+      return rows
+        .filter(r => r.some(cell => String(cell || "").trim() !== ""))
+        .map(r => {
+          const obj = {};
+          headers.forEach((h, i) => {
+            obj[h] = r[i] ? r[i].trim() : "";
+          });
+          return obj;
+        });
+    }
+  </script>
+</body>
+</html>
