@@ -480,14 +480,14 @@
     });
 
     function applyFilters() {
-      const q = $("search").value.trim().toLowerCase();
+      const q = $("search").value.trim();
       const filterRead = $("filterRead").value;
       const filterFavorite = $("filterFavorite").value;
       const filterPlace = $("filterPlace").value;
       const sortBy = $("sortBy").value;
 
       visibleBooks = allBooks.filter(book => {
-        const searchable = [
+        const searchableFields = [
           book.Title,
           book.Author,
           book.Publisher,
@@ -497,9 +497,9 @@
           book.Location,
           book.ISBN,
           book.Summary
-        ].join(" ").toLowerCase();
+        ];
 
-        if (q && !searchable.includes(q)) return false;
+        if (q && !matchesSearch(searchableFields, q)) return false;
 
         if (filterRead === "read" && !isYes(book.Read)) return false;
         if (filterRead === "unread" && isYes(book.Read)) return false;
@@ -785,6 +785,27 @@
         .filter(Boolean)
         .map(value => String(value).trim())
         .filter(Boolean);
+    }
+
+    function matchesSearch(fields, query) {
+      const text = normalizeSearchText(fields.join(" "));
+      const queryText = normalizeSearchText(query);
+      const queryTokens = queryText.split(" ").filter(Boolean);
+
+      if (!queryTokens.length) return true;
+      if (text.includes(queryText)) return true;
+
+      const textTokens = new Set(text.split(" ").filter(Boolean));
+      return queryTokens.every(token => textTokens.has(token));
+    }
+
+    function normalizeSearchText(value) {
+      return String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
     }
 
     function getYear(value) {
