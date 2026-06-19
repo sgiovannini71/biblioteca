@@ -51,10 +51,17 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
       gap: 12px;
       margin-bottom: 20px;
       align-items: center;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
     }
 
     input,
@@ -76,6 +83,10 @@
 
     button:hover {
       opacity: 0.9;
+    }
+
+    .button-secondary {
+      background: #444;
     }
 
     .stats {
@@ -287,6 +298,52 @@
       margin-top: 14px;
     }
 
+    .detail-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .edit-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .edit-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .edit-field.full {
+      grid-column: 1 / -1;
+    }
+
+    .edit-field label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .edit-field textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .edit-field input,
+    .edit-field textarea {
+      width: 100%;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
     a {
       color: var(--accent);
     }
@@ -310,6 +367,10 @@
       .detail {
         grid-template-columns: 1fr;
       }
+
+      .edit-form {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -320,6 +381,11 @@
   </header>
 
   <main>
+    <section class="actions">
+      <button id="addBookBtn">Nuovo libro</button>
+      <button id="exportCsvBtn" class="button-secondary">Esporta CSV</button>
+    </section>
+
     <section class="toolbar">
       <input id="search" type="text" placeholder="Cerca titolo, autore, editore, genere, tag..." />
 
@@ -332,6 +398,10 @@
       <select id="filterFavorite">
         <option value="">Tutti</option>
         <option value="favorite">Preferiti</option>
+      </select>
+
+      <select id="filterPlace">
+        <option value="">Tutte le posizioni</option>
       </select>
 
       <select id="sortBy">
@@ -363,6 +433,7 @@
 
     let allBooks = [];
     let visibleBooks = [];
+    let csvHeaders = [];
 
     const $ = id => document.getElementById(id);
 
@@ -375,13 +446,14 @@
       })
       .then(text => {
         allBooks = parseCSV(text);
+        populatePlaceFilter();
         applyFilters();
       })
       .catch(error => {
         $("books").innerHTML = `<div class="empty">Errore: ${escapeHTML(error.message)}</div>`;
       });
 
-    ["search", "filterRead", "filterFavorite", "sortBy"].forEach(id => {
+    ["search", "filterRead", "filterFavorite", "filterPlace", "sortBy"].forEach(id => {
       $(id).addEventListener("input", applyFilters);
       $(id).addEventListener("change", applyFilters);
     });
@@ -390,9 +462,13 @@
       $("search").value = "";
       $("filterRead").value = "";
       $("filterFavorite").value = "";
+      $("filterPlace").value = "";
       $("sortBy").value = "title";
       applyFilters();
     });
+
+    $("addBookBtn").addEventListener("click", () => openEditModal(createEmptyBook()));
+    $("exportCsvBtn").addEventListener("click", exportCSV);
 
     $("modalClose").addEventListener("click", closeModal);
     $("modalBackdrop").addEventListener("click", event => {
@@ -407,6 +483,7 @@
       const q = $("search").value.trim().toLowerCase();
       const filterRead = $("filterRead").value;
       const filterFavorite = $("filterFavorite").value;
+      const filterPlace = $("filterPlace").value;
       const sortBy = $("sortBy").value;
 
       visibleBooks = allBooks.filter(book => {
@@ -429,12 +506,33 @@
 
         if (filterFavorite === "favorite" && !isYes(book.Favorite)) return false;
 
+        if (filterPlace && !getBookPlaces(book).includes(filterPlace)) return false;
+
         return true;
       });
 
       sortBooks(visibleBooks, sortBy);
       renderStats();
       renderBooks(visibleBooks);
+    }
+
+    function populatePlaceFilter() {
+      const select = $("filterPlace");
+      const places = new Set();
+
+      allBooks.forEach(book => {
+        getBookPlaces(book).forEach(place => places.add(place));
+      });
+
+      const options = Array.from(places).sort((a, b) => compareText(a, b));
+      select.innerHTML = `<option value="">Tutte le posizioni</option>`;
+
+      options.forEach(place => {
+        const option = document.createElement("option");
+        option.value = place;
+        option.textContent = place;
+        select.appendChild(option);
+      });
     }
 
     function sortBooks(books, sortBy) {
@@ -537,6 +635,10 @@
             <h2>${escapeHTML(book.Title || "Senza titolo")}</h2>
             <p><strong>${escapeHTML(book.Author || "Autore non indicato")}</strong></p>
 
+            <div class="detail-actions">
+              <button type="button" id="editBookBtn">Modifica riga</button>
+            </div>
+
             <div class="badges">
               ${isYes(book.Read) ? `<span class="badge read">Letto</span>` : `<span class="badge unread">Non letto</span>`}
               ${isYes(book.Favorite) ? `<span class="badge favorite">★ Preferito</span>` : ""}
@@ -568,7 +670,84 @@
         </div>
       `;
 
+      $("editBookBtn").addEventListener("click", () => openEditModal(book));
       $("modalBackdrop").style.display = "flex";
+    }
+
+    function openEditModal(book) {
+      const isNew = !allBooks.includes(book);
+      const title = isNew ? "Nuovo libro" : "Modifica riga";
+
+      $("modalContent").innerHTML = `
+        <h2>${title}</h2>
+        <form id="bookForm">
+          <div class="edit-form">
+            ${csvHeaders.map(header => editField(header, book[header] || "")).join("")}
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="button-secondary" id="cancelEditBtn">Annulla</button>
+            <button type="submit">Salva riga</button>
+          </div>
+        </form>
+      `;
+
+      $("bookForm").addEventListener("submit", event => {
+        event.preventDefault();
+
+        csvHeaders.forEach(header => {
+          const field = document.querySelector(`[data-csv-field="${cssEscape(header)}"]`);
+          book[header] = field ? field.value.trim() : "";
+        });
+
+        if (isNew) allBooks.push(book);
+
+        populatePlaceFilter();
+        applyFilters();
+        closeModal();
+      });
+
+      $("cancelEditBtn").addEventListener("click", closeModal);
+      $("modalBackdrop").style.display = "flex";
+    }
+
+    function editField(header, value) {
+      const largeFields = ["Summary", "Comments", "Item Url", "Image Url", "Tags"];
+      const isLarge = largeFields.includes(header);
+      const fieldId = `field_${header.replace(/[^a-z0-9]/gi, "_")}`;
+      const commonAttrs = `id="${escapeAttr(fieldId)}" data-csv-field="${escapeAttr(header)}"`;
+
+      return `
+        <div class="edit-field${isLarge ? " full" : ""}">
+          <label for="${escapeAttr(fieldId)}">${escapeHTML(header)}</label>
+          ${isLarge
+            ? `<textarea ${commonAttrs}>${escapeHTML(value)}</textarea>`
+            : `<input ${commonAttrs} value="${escapeAttr(value)}">`
+          }
+        </div>
+      `;
+    }
+
+    function createEmptyBook() {
+      const book = {};
+      csvHeaders.forEach(header => {
+        book[header] = "";
+      });
+      return book;
+    }
+
+    function exportCSV() {
+      const csv = serializeCSV(csvHeaders, allBooks);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "libri-aggiornato.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     }
 
     function closeModal() {
@@ -599,6 +778,13 @@
     function firstValue(value) {
       if (!value) return "";
       return String(value).split(/[;,|]/)[0].trim();
+    }
+
+    function getBookPlaces(book) {
+      return [book.BookShelf, book.Location]
+        .filter(Boolean)
+        .map(value => String(value).trim())
+        .filter(Boolean);
     }
 
     function getYear(value) {
@@ -635,6 +821,23 @@
 
     function escapeAttr(str) {
       return escapeHTML(str).replace(/`/g, "&#096;");
+    }
+
+    function cssEscape(str) {
+      return String(str || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    }
+
+    function serializeCSV(headers, rows) {
+      const lines = [
+        headers.map(csvCell).join(";"),
+        ...rows.map(row => headers.map(header => csvCell(row[header] || "")).join(";"))
+      ];
+
+      return lines.join("\r\n") + "\r\n";
+    }
+
+    function csvCell(value) {
+      return `"${String(value || "").replace(/"/g, '""')}"`;
     }
 
     function parseCSV(text) {
@@ -676,6 +879,7 @@
       if (!rows.length) return [];
 
       const headers = rows.shift().map(h => h.trim());
+      csvHeaders = headers;
 
       return rows
         .filter(r => r.some(cell => String(cell || "").trim() !== ""))
